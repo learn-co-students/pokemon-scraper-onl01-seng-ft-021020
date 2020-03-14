@@ -1,31 +1,31 @@
 class Scraper
-  attr_accessor :file, :parsed_file, :all_pokemon, :db
+  attr_reader :id, :name, :type, :hp, :db
+  @@all = []
 
-  def initialize(db)
-    self.db = db
-    self.file = File.open("pokemon_index.html")
-    self.parsed_file = Nokogiri::HTML.parse(file)
-    self.all_pokemon = catch_em_all
+  def initialize (id:, name:, type:, hp: nil, db:)
+    @id = id
+    @name = name
+    @type = type
+    @hp = hp
+    @db = db
+    @@all << self
   end
 
-  def catch_em_all
-    self.all_pokemon = parsed_file.css(".infocard-tall")
+  def self.save(name, type, database_connection)
+    database_connection.execute("INSERT INTO pokemon (name, type) VALUES (?, ?)", name, type)
   end
 
-  def get_pokemon_name_from(node)
-    node.css(".ent-name").text
+  def self.find(id, database_connection)
+    pokemon = database_connection.execute("SELECT * FROM pokemon WHERE id = ?", id).flatten
+    name = pokemon[1]
+    type = pokemon[2]
+    hp = pokemon[3]
+
+    pokemon_inst = Pokemon.new(id: id, name: name, type: type, hp: hp, db: database_connection)
   end
 
-  def get_pokemon_type_from(node)
-    node.css(".itype").text
-  end
-
-  def scrape
-    all_pokemon.each do |pk_node|
-      pk_name = get_pokemon_name_from(pk_node)
-      pk_type = get_pokemon_type_from(pk_node)
-      Pokemon.save(pk_name, pk_type, db)
-    end
+  def alter_hp(new_hp, database_connection)
+    database_connection.execute("UPDATE pokemon SET hp = ? WHERE id = ?", new_hp, @id)
   end
 
 end
